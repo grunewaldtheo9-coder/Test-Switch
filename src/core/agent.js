@@ -1,87 +1,91 @@
 'use strict'
 
 /**
- * ARIA Core Agent
- * Orchestrates Claude API calls, maintains chat history,
- * and routes commands to the appropriate module.
+ * ARIA Core Agent — Node.js (Electron/Desktop)
+ * Uses Google Gemini API via REST for the main process.
+ * The renderer process uses src/services/gemini.js directly.
  */
 
-const Anthropic = require('@anthropic-ai/sdk')
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyAM4k_tgGradQQ3mDIGyBgJoKl6jzKt8jU'
+const MODEL          = 'gemini-1.5-flash'
+const API_URL        = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`
 
 const SYSTEM_PROMPT = `Você é ARIA — Autonomous Resident Intelligence Agent.
 
-Você é um assistente executivo sênior instalado diretamente no computador do usuário.
-Você age de forma profissional, direta e eficiente.
+Você é uma assistente executiva virtual de nível profissional instalada diretamente no computador do usuário.
 
-CAPACIDADES:
-- Gestão de arquivos e pastas
-- Gestão de emails (leitura, organização, redação)
-- Calendário e agenda
-- Monitoramento financeiro e contas a pagar
-- Análise de documentos (PDF, Word, Excel)
-- Diagnóstico e manutenção do sistema
-- Automações e fluxos de trabalho
-- Pesquisa na web
+Aja com a mentalidade de um assistente executivo sênior altamente treinado:
+- Conhece profundamente o fluxo de trabalho do usuário
+- Antecipa necessidades antes de serem expressas
+- Executa tarefas complexas de ponta a ponta
+- Reporta progresso, riscos e conclusões de forma clara
+- Nunca age de forma negligente com dados sensíveis
+- Pede confirmação antes de ações irreversíveis de alto impacto
 
-REGRAS:
-1. Ações de Nível 1 (leitura, pesquisa, relatórios): execute e reporte.
-2. Ações de Nível 2 (mover arquivos, respostas automáticas): notifique e execute em 30s.
-3. Ações de Nível 3 (enviar email, deletar, instalar): exija confirmação explícita.
-4. Ações de Nível 4 (pagamentos, senhas, finanças): exija confirmação + PIN.
-5. Sempre registre tudo com timestamp.
-6. Seja transparente: diga o que fez, por quê e o resultado.
-7. Nunca execute pagamentos sem confirmação humana explícita.
+FORMATO DE RESPOSTA:
+- ✅ para ações concluídas
+- ⚡ para confirmações pendentes
+- ❌ para erros
+- ⚠️ para alertas
 
-FORMAT DE RESPOSTA:
-- Ações concluídas: comece com "✅"
-- Confirmações pendentes: comece com "⚡"
-- Erros: comece com "❌"
-- Alertas: comece com "⚠️"
-
-Adapte o idioma ao do usuário. Seja conciso em confirmações rotineiras e detalhado em erros e riscos.`
+Comunique-se em português do Brasil. Seja conciso em confirmações e detalhado em riscos.`
 
 function createAgentCore(store, logger) {
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  })
-
   const history = []
 
   async function chat(userMessage) {
-    history.push({ role: 'user', content: userMessage })
+    history.push({ role: 'user', parts: [{ text: userMessage }] })
 
-    // Keep last 40 messages to manage context window
-    const messages = history.slice(-40)
+    // Keep last 40 turns
+    const contents = history.slice(-40)
 
     try {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        system: SYSTEM_PROMPT,
-        messages,
+      const response = await fetch(API_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          generationConfig: {
+            temperature:     0.8,
+            maxOutputTokens: 2048,
+            topP:            0.95,
+          },
+        }),
       })
 
-      const assistantMessage = response.content[0].text
-      history.push({ role: 'assistant', content: assistantMessage })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err?.error?.message ?? `HTTP ${response.status}`)
+      }
+
+      const data    = await response.json()
+      const text    = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '(sem resposta)'
+
+      history.push({ role: 'model', parts: [{ text }] })
 
       logger.info('agent-response', {
-        inputTokens:  response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        stopReason:   response.stop_reason,
+        inputTokens:  data?.usageMetadata?.promptTokenCount,
+        outputTokens: data?.usageMetadata?.candidatesTokenCount,
       })
 
-      return { ok: true, message: assistantMessage }
+      return { ok: true, message: text }
     } catch (err) {
       logger.error('agent-error', { error: err.message })
-      return {
-        ok: false,
-        message: `❌ Erro ao processar sua mensagem.\n→ Motivo: ${err.message}\n→ Sugestão: Verifique sua conexão e a chave de API.`,
-      }
+
+      const msg = err.message?.includes('429')
+        ? '⚠️ Limite de requisições Gemini atingido.\n→ Aguarde um momento e tente novamente.'
+        : `❌ Erro ao processar sua mensagem.\n→ Motivo: ${err.message}`
+
+      return { ok: false, message: msg }
     }
   }
 
   function getHistory() {
-    return history.slice(-100)
+    return history.slice(-100).map((m) => ({
+      role:    m.role === 'model' ? 'assistant' : 'user',
+      content: m.parts?.[0]?.text ?? '',
+    }))
   }
 
   return { chat, getHistory }

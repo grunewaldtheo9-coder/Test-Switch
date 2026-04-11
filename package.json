@@ -10,13 +10,21 @@
     "build": "vite build && electron-builder",
     "build:renderer": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext .js,.jsx"
+    "lint": "eslint src --ext .js,.jsx",
+    "android:init": "npx cap init \"ARIA Agent\" com.aria.agent --web-dir dist",
+    "android:add": "npx cap add android",
+    "android:sync": "vite build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "vite build && npx cap sync android && npx cap build android",
+    "android:run": "vite build && npx cap sync android && npx cap run android"
   },
-  "keywords": ["aria", "ai", "agent", "electron", "claude"],
+  "keywords": ["aria", "ai", "agent", "gemini", "android", "electron"],
   "author": "ARIA Team",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.27.0",
+    "@google/generative-ai": "^0.21.0",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
     "better-sqlite3": "^9.4.3",
     "node-cron": "^3.0.3",
     "keytar": "^7.9.0",
@@ -37,6 +45,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.0",
+    "@capacitor/cli": "^6.1.2",
     "autoprefixer": "^10.4.19",
     "concurrently": "^8.2.2",
     "electron": "^31.0.0",
@@ -54,9 +63,7 @@
   "build": {
     "appId": "com.aria.agent",
     "productName": "ARIA Agent",
-    "directories": {
-      "output": "dist-electron"
-    },
+    "directories": { "output": "dist-electron" },
     "files": ["src/main/**/*", "dist/**/*"],
     "mac": { "category": "public.app-category.productivity" },
     "win": { "target": "nsis" },
