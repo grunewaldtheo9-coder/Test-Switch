@@ -7,8 +7,13 @@
     "dev": "concurrently \"vite\" \"electron .\"",
     "dev:renderer": "vite",
     "dev:main": "electron .",
-    "build": "vite build && electron-builder",
+    "build": "node assets/generate-icon.js && vite build && electron-builder",
     "build:renderer": "vite build",
+    "build:win": "node assets/generate-icon.js && vite build && electron-builder --win",
+    "build:win:x64": "node assets/generate-icon.js && vite build && electron-builder --win --x64",
+    "build:win:ia32": "node assets/generate-icon.js && vite build && electron-builder --win --ia32",
+    "build:mac": "node assets/generate-icon.js && vite build && electron-builder --mac",
+    "build:linux": "node assets/generate-icon.js && vite build && electron-builder --linux",
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.jsx",
     "android:init": "npx cap init \"ARIA Agent\" com.aria.agent --web-dir dist",
@@ -16,9 +21,10 @@
     "android:sync": "vite build && npx cap sync android",
     "android:open": "npx cap open android",
     "android:build": "vite build && npx cap sync android && npx cap build android",
-    "android:run": "vite build && npx cap sync android && npx cap run android"
+    "android:run": "vite build && npx cap sync android && npx cap run android",
+    "generate-icons": "node assets/generate-icon.js"
   },
-  "keywords": ["aria", "ai", "agent", "gemini", "android", "electron"],
+  "keywords": ["aria", "ai", "agent", "gemini", "android", "electron", "windows"],
   "author": "ARIA Team",
   "license": "MIT",
   "dependencies": {
@@ -63,10 +69,63 @@
   "build": {
     "appId": "com.aria.agent",
     "productName": "ARIA Agent",
-    "directories": { "output": "dist-electron" },
-    "files": ["src/main/**/*", "dist/**/*"],
-    "mac": { "category": "public.app-category.productivity" },
-    "win": { "target": "nsis" },
-    "linux": { "target": "AppImage" }
+    "copyright": "Copyright © 2025 ARIA Team",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/main/**/*",
+      "dist/**/*",
+      "assets/icon.*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to":   "assets",
+        "filter": ["icon.*", "tray-icon.*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis",     "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon":          "assets/icon.ico",
+      "publisherName": "ARIA Team",
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick":                         false,
+      "allowElevation":                   true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon":                    "assets/icon.ico",
+      "uninstallerIcon":                  "assets/icon.ico",
+      "installerHeaderIcon":              "assets/icon.ico",
+      "createDesktopShortcut":            true,
+      "createStartMenuShortcut":          true,
+      "shortcutName":                     "ARIA Agent",
+      "deleteAppDataOnUninstall":         false,
+      "displayLanguageSelector":          false,
+      "language":                         "1046",
+      "perMachine":                       false,
+      "menuCategory":                     "ARIA",
+      "differentialPackage":              false
+    },
+    "portable": {
+      "artifactName": "ARIA-Agent-Portable-${version}.exe"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon":     "assets/icon.icns",
+      "target":   [{ "target": "dmg", "arch": ["x64", "arm64"] }]
+    },
+    "linux": {
+      "icon":   "assets/icon.png",
+      "target": [{ "target": "AppImage", "arch": ["x64"] }]
+    },
+    "artifactName": "${productName}-Setup-${version}.${ext}"
   }
 }

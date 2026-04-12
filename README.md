@@ -1,8 +1,46 @@
 # ARIA — Autonomous Resident Intelligence Agent
 
-**ARIA** is an AI-powered virtual executive assistant — available as an **Android APK** and a desktop Electron app.
+**ARIA** is an AI-powered virtual executive assistant — available as a **Windows .EXE**, **Android APK**, and a cross-platform desktop Electron app.
 
 > **AI Engine:** Google Gemini 1.5 Flash (free tier, no credit card required)
+
+---
+
+## Windows .EXE — Quick Build
+
+### On Windows (recommended)
+
+Simply double-click `build-exe.bat` — it does everything automatically.
+
+```bat
+build-exe.bat
+```
+
+Output files in `dist-electron\`:
+- `ARIA-Agent-Setup-1.0.0.exe` — NSIS installer (adds to Start Menu + Desktop)
+- `ARIA-Agent-Portable-1.0.0.exe` — portable, no installation needed
+
+### On Linux / macOS (cross-compile)
+
+```bash
+npm install
+bash build-exe.sh
+```
+
+### Manual steps
+
+```bash
+npm install                         # install deps
+node assets/generate-icon.js       # generate icon.png + icon.ico
+npm run build:renderer              # build React app → dist/
+npx electron-builder --win --x64   # build .exe → dist-electron/
+```
+
+### Install on Windows
+
+Run `ARIA-Agent-Setup-1.0.0.exe` → follow the wizard → ARIA appears in Start Menu and Desktop.
+
+Or use the portable `.exe` — copy to USB, run anywhere, no install required.
 
 ---
 

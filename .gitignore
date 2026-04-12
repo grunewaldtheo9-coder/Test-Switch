@@ -15,3 +15,9 @@ android/.gradle/
 android/local.properties
 *.keystore
 *.jks
+
+# Generated assets are committed so CI can build without running the generator
+# Un-comment the lines below if you want to regenerate on every build:
+# assets/icon.png
+# assets/icon.ico
+# assets/tray-icon.png
