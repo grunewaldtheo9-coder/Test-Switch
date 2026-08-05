@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-electron
+release
+*.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.log
+coverage
+.env
+.env.*
+!.env.example
